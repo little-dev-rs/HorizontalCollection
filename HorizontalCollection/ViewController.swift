@@ -31,13 +31,17 @@ class ViewController: UIViewController {
 extension ViewController: UICollectionViewDelegate, UICollectionViewDataSource {
     
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        5
+        20
     }
     
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
-        let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "collectionFlowCell", for: indexPath) as? CollectionFlowCell ?? UICollectionViewCell()
+        guard let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "collectionFlowCell", for: indexPath) as? CollectionFlowCell else {
+            return UICollectionViewCell()
+
+        }
         cell.layer.cornerRadius = 10
         cell.backgroundColor = .cyan
+        cell.configure(text: "\(indexPath.row)")
         return cell
     }
     
@@ -49,18 +53,41 @@ extension ViewController: UICollectionViewDelegateFlowLayout {
     }
     
     func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, insetForSectionAt section: Int) -> UIEdgeInsets {
-        // Set the section insets (spacing around the cells)
-        return UIEdgeInsets(top: 10, left: 10, bottom: 10, right: 10)
+        return collectionView.layoutMargins
     }
 }
 
 class CollectionFlowCell: UICollectionViewCell {
     
-    let label = UILabel()
-    
+    lazy var label: UILabel = {
+        var label = UILabel()
+        label.numberOfLines = 1
+        label.font = UIFont.systemFont(ofSize: 18, weight: .regular)
+        label.textColor = .black
+        label.textAlignment = .center
+        return label
+    }()
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        setupSubviews()
+        
+    }
+
+    required init?(coder aDecoder: NSCoder) {
+        super.init(coder: aDecoder)
+        setupSubviews()
+    }
+
+    private func setupSubviews() {
+        contentView.addSubview(label)
+        label.frame = contentView.bounds
+    }
+
     func configure(text: String) {
         label.text = text
     }
+
 }
 
 class CustomFlowLayout: UICollectionViewFlowLayout {
@@ -70,42 +97,30 @@ class CustomFlowLayout: UICollectionViewFlowLayout {
         let contentHeight = collectionView?.bounds.height ?? 0
         return CGSize(width: contentWidth, height: contentHeight)
     }
-
+    
     override func targetContentOffset(forProposedContentOffset proposedContentOffset: CGPoint, withScrollingVelocity velocity: CGPoint) -> CGPoint {
         guard let collectionView = collectionView else {
             return super.targetContentOffset(forProposedContentOffset: proposedContentOffset, withScrollingVelocity: velocity)
         }
-        
-        // Calculate the visible rect of the collection view
         let visibleRect = CGRect(origin: collectionView.contentOffset, size: collectionView.bounds.size)
-        
-        // Get the center point of the visible rect
         let visibleCenterX = visibleRect.midX
-        
-        // Find the proposed attributes that are closest to the center point
         let proposedAttributes = super.layoutAttributesForElements(in: visibleRect)
         var targetOffset = CGFloat.greatestFiniteMagnitude
         var visibleCellFrames: [CGRect] = []
         
         for attributes in proposedAttributes ?? [] {
             let distance = attributes.center.x - visibleCenterX
-            
-            // Check if this cell is closer to the center compared to the current target offset
             if abs(distance) < abs(targetOffset) {
                 targetOffset = distance
             }
-            // Append the frame of the visible cell
             visibleCellFrames.append(attributes.frame)
         }
         
         var leftPoint: CGFloat = 0
-        // Access the coordinates or frame of visible cells
         for frame in visibleCellFrames {
             leftPoint = frame.minX - collectionView.layoutMargins.left
             print("Visible cell frame: \(frame) leftPoint \(leftPoint)")
         }
-        
-        // Add the target offset to the proposed content offset
         let newOffset = CGPoint(x: proposedContentOffset.x + targetOffset, y: proposedContentOffset.y)
         return CGPoint(x: leftPoint, y: 0)
     }
